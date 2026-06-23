@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Studio - AI Smart Flashcards & Quiz</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for beautiful educational icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- PDF.js CDN for in-browser PDF parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+    <!-- MathJax for Mathematical & Scientific Symbols Rendering -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        serif: ['"Playfair Display"', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Smooth transitions */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Fix for MathJax overflow in smaller cards */
+        .mjx-chtml {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+        }
+    </style>
+</head>
+<body class="h-full font-sans text-slate-800 antialiased flex flex-col md:flex-row overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-full md:w-80 lg:w-96 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0 h-auto md:h-full z-10 shadow-sm">
+        <!-- Logo Header -->
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                    <i class="fa-solid fa-graduation-cap text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-900 tracking-tight leading-none text-base">Learning Studio</h1>
+                    <span class="text-xs font-semibold text-indigo-600 tracking-wider uppercase">AI Quiz Companion</span>
+                </div>
+            </div>
+            <!-- API Status Badge -->
+            <div id="api-status-badge" class="px-2 py-1 text-[10px] font-bold tracking-wider rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 uppercase">
+                Ready
+            </div>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="p-6 flex-1 overflow-y-auto space-y-6">
+            <!-- App Description -->
+            <div class="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100">
+                <h3 class="font-bold text-indigo-900 text-sm mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-lightbulb text-indigo-600"></i> How it works
+                </h3>
+                <p class="text-xs text-indigo-800/80 leading-relaxed">
+                    Upload any chapter, book extract, or tutorial PDF. Our AI educator will design a customized, 10-question adaptive flashcard quiz for you! Supports complex Math & Science symbols.
+                </p>
+            </div>
+
+            <!-- PDF UPLOAD SECTION -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Step 1: Upload Learning Material</label>
+                
+                <div id="drop-zone" class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-indigo-400 hover:bg-indigo-50/10 transition-all cursor-pointer group relative">
+                    <input type="file" id="pdf-file-input" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    
+                    <div id="upload-idle-state" class="space-y-3">
+                        <div class="mx-auto w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 transition-colors">
+                            <i class="fa-solid fa-file-pdf text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-700">Drag & drop your PDF file</p>
+                            <p class="text-[10px] text-slate-400 mt-0.5">or click to browse your computer</p>
+                        </div>
+                    </div>
+
+                    <!-- PDF parsing/reading active state -->
+                    <div id="upload-loading-state" class="hidden space-y-3 py-2">
+                        <div class="mx-auto">
+                            <i class="fa-solid fa-circle-notch fa-spin text-indigo-600 text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-indigo-600" id="pdf-progress-text">Extracting content...</p>
+                            <p class="text-[10px] text-slate-400 mt-1">Please wait a few moments</p>
+                        </div>
+                    </div>
+
+                    <!-- PDF loaded success state -->
+                    <div id="upload-success-state" class="hidden space-y-3">
+                        <div class="mx-auto w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                            <i class="fa-solid fa-circle-check text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-800 truncate" id="uploaded-file-name">Document Loaded</p>
+                            <p class="text-[10px] text-emerald-600 font-medium" id="uploaded-file-details">0 pages extracted</p>
+                        </div>
+                        <button type="button" id="btn-change-file" class="text-[10px] font-bold text-slate-500 hover:text-rose-600 transition-colors">
+                            Change Document
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quiz Settings / Optional API Config -->
+            <div id="quiz-generation-controls" class="space-y-4 pt-2 border-t border-slate-100">
+                <div class="flex items-center justify-between">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Step 2: Start Learning</label>
+                </div>
+
+                <div class="space-y-2.5 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+                        <span>Quiz Style Balance</span>
+                        <span id="ratio-display" class="font-extrabold text-indigo-600">50% MCQ / 50% T/F</span>
+                    </div>
+                    <input type="range" id="ratio-slider" min="0" max="100" step="10" value="50" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none" />
+                    <div class="flex justify-between text-[9px] text-slate-400 font-bold tracking-wider uppercase">
+                        <span>100% True/False</span>
+                        <span>Balanced</span>
+                        <span>100% MCQ</span>
+                    </div>
+                </div>
+
+                <div class="space-y-2.5 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+                        <span>Target Difficulty</span>
+                        <span id="difficulty-display" class="font-extrabold text-indigo-600 uppercase">Mixed</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1 bg-slate-200/60 p-1 rounded-xl text-[10px] font-extrabold text-center">
+                        <button type="button" id="diff-mixed" class="py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition-all focus:outline-none">Mixed</button>
+                        <button type="button" id="diff-easy" class="py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all focus:outline-none">Easy</button>
+                        <button type="button" id="diff-medium" class="py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all focus:outline-none">Med</button>
+                        <button type="button" id="diff-hard" class="py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all focus:outline-none">Hard</button>
+                    </div>
+                </div>
+
+                <button id="btn-generate-quiz" disabled 
+                    class="w-full py-3 px-4 bg-slate-100 text-slate-400 font-semibold rounded-xl text-sm transition-all duration-200 cursor-not-allowed flex items-center justify-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Generate AI Quiz</span>
+                </button>
+
+                <!-- Optional Custom API Key accordion -->
+                <div class="border border-slate-100 rounded-xl overflow-hidden bg-slate-50">
+                    <button type="button" id="toggle-advanced" class="w-full px-3 py-2 text-left text-xs font-bold text-slate-500 flex justify-between items-center hover:bg-slate-100 transition-colors">
+                        <span>Advanced API Settings</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" id="advanced-chevron"></i>
+                    </button>
+                    <div id="advanced-panel" class="hidden p-3 border-t border-slate-100 bg-white space-y-2">
+                        <p class="text-[10px] text-slate-500 leading-relaxed">
+                            A built-in developer key will be injected automatically, but you can override it with your own Gemini API Key here if needed:
+                        </p>
+                        <input type="password" id="custom-api-key" placeholder="AIzaSy..." 
+                            class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Footer -->
+        <div class="p-6 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-400 text-center flex items-center justify-between">
+            <span>Learning Studio v1.3 (Math-Ready)</span>
+            <span>Powered by Gemini 2.5 Flash</span>
+        </div>
+    </aside>
+
+    <!-- MAIN DISPLAY AREA -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
+
+        <!-- Welcome / Idle State Screen -->
+        <div id="screen-welcome" class="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-2xl mx-auto overflow-y-auto fade-in">
+            <div class="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center text-indigo-600 text-3xl mb-6 shadow-md shadow-indigo-500/5">
+                <i class="fa-solid fa-book-open-reader"></i>
+            </div>
+            <h2 class="font-serif text-3xl text-slate-900 font-bold tracking-tight mb-3">Your Personalized AI Study Room</h2>
+            <p class="text-slate-500 leading-relaxed mb-8 text-sm max-w-md">
+                No active quiz. Upload your textbook chapter or class tutorial in the sidebar to dynamically produce study flashcards. 
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-lg">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col items-center">
+                    <span class="w-8 h-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center font-bold text-xs mb-2">1</span>
+                    <h4 class="text-xs font-bold text-slate-700 mb-1">Upload PDF</h4>
+                    <p class="text-[10px] text-slate-400">Chapters, papers, slides, or simple tutorial notes.</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col items-center">
+                    <span class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs mb-2">2</span>
+                    <h4 class="text-xs font-bold text-slate-700 mb-1">Generate AI Quiz</h4>
+                    <p class="text-[10px] text-slate-400">Creates 10 structured cards, decoding advanced math elements.</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col items-center">
+                    <span class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs mb-2">3</span>
+                    <h4 class="text-xs font-bold text-slate-700 mb-1">Review & Learn</h4>
+                    <p class="text-[10px] text-slate-400">Complete the quiz and receive human-like tutoring.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Generation State Screen -->
+        <div id="screen-loading" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center fade-in">
+            <!-- Animated Brain/Sparkle Loading Effect -->
+            <div class="relative w-24 h-24 mb-6">
+                <div class="absolute inset-0 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin"></div>
+                <div class="absolute inset-4 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 text-2xl">
+                    <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i>
+                </div>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Designing Your Study Quiz</h3>
+            <p class="text-sm text-slate-500 max-w-sm mb-1">Gemini is analyzing the textbook materials and creating custom, challenging questions...</p>
+            <span class="text-xs text-indigo-600 font-semibold" id="loading-subtext">Structuring multiple-choice, binary options & math symbols</span>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="screen-quiz" class="hidden flex-1 flex flex-col h-full overflow-hidden fade-in">
+            <!-- Header bar with progress -->
+            <div class="bg-white border-b border-slate-100 py-4 px-6 sm:px-8 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-4">
+                    <div class="h-9 w-9 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 cursor-pointer hover:bg-rose-50 hover:text-rose-500 transition-colors" id="btn-abort-quiz" title="Quit Quiz">
+                        <i class="fa-solid fa-xmark"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs text-slate-400 font-semibold tracking-wider uppercase">Current Challenge</h4>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-slate-800" id="quiz-progress-label">Flashcard 1 of 10</span>
+                            <span id="quiz-badge-difficulty" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700 uppercase tracking-wider">Easy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress percentage -->
+                <div class="flex items-center gap-3">
+                    <div class="w-24 bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div id="quiz-progress-bar" class="bg-indigo-600 h-full transition-all duration-300" style="width: 10%"></div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-600" id="quiz-progress-percentage">10%</span>
+                </div>
+            </div>
+
+            <!-- Flashcard Frame (Flex-1) -->
+            <div class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto flex flex-col justify-start md:justify-center items-center w-full">
+                <div class="w-full max-w-2xl bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100/80 flex flex-col my-auto">
+                    <!-- Card Header Indicator -->
+                    <div class="px-8 py-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center shrink-0">
+                        <span class="text-xs font-bold text-indigo-600 tracking-wide uppercase flex items-center gap-1.5">
+                            <i class="fa-regular fa-clone"></i> Flashcard Question
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <span id="card-type-badge" class="text-[10px] font-bold text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-md uppercase tracking-wide">Multiple Choice</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="p-8 flex flex-col space-y-6">
+                        <!-- Question Text -->
+                        <div class="space-y-2">
+                            <h3 id="card-question-text" class="text-lg sm:text-xl font-bold text-slate-800 leading-snug">
+                                Loading question...
+                            </h3>
+                        </div>
+
+                        <!-- Options Choices Area -->
+                        <div id="card-options-container" class="space-y-3">
+                            <!-- Dynamic choices filled by JS -->
+                        </div>
+
+                        <!-- Card Actions Panel -->
+                        <div class="pt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-slate-100">
+                            <span class="text-xs text-slate-400 italic">
+                                Note: You cannot return to previous flashcards once submitted.
+                            </span>
+                            <div class="flex items-center gap-3 justify-end shrink-0">
+                                <button id="btn-submit-answer" disabled
+                                    class="py-3 px-6 bg-slate-100 text-slate-400 font-bold rounded-xl text-sm transition-all duration-200 cursor-not-allowed flex items-center gap-2">
+                                    <span>Confirm & Next</span>
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results / Grade Screen -->
+        <div id="screen-results" class="hidden flex-1 flex flex-col h-full overflow-hidden fade-in">
+            <!-- Header bar with action -->
+            <div class="bg-white border-b border-slate-100 py-4 px-6 sm:px-8 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="h-8 w-8 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800">Your Written Diagnostic Report</h3>
+                </div>
+                <button id="btn-restart-quiz" class="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-rotate-right"></i> Retake Test
+                </button>
+            </div>
+
+            <!-- Double Column Layout on desktop for results review -->
+            <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                <!-- Score Breakdown Area -->
+                <div class="w-full lg:w-[420px] bg-white border-b lg:border-b-0 lg:border-r border-slate-100 p-6 sm:p-8 flex flex-col justify-between shrink-0 overflow-y-auto">
+                    
+                    <div class="space-y-6">
+                        <!-- Teacher Note Box -->
+                        <div class="text-center p-4 bg-gradient-to-b from-indigo-50/70 to-violet-50/40 rounded-3xl border border-indigo-100 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-12 h-12 bg-indigo-100/40 rounded-full blur-xl"></div>
+                            <div class="absolute bottom-0 left-0 w-8 h-8 bg-violet-100/40 rounded-full blur-xl"></div>
+                            
+                            <h4 class="text-[10px] font-extrabold text-indigo-600 tracking-wider uppercase mb-1">Final Score</h4>
+                            <div class="inline-flex items-baseline mb-2">
+                                <span class="text-5xl font-black text-indigo-950 font-serif" id="results-score-big">0</span>
+                                <span class="text-lg font-bold text-indigo-400">/10</span>
+                            </div>
+                            
+                            <div class="w-full bg-slate-200 h-1.5 rounded-full mb-3 overflow-hidden">
+                                <div id="results-score-bar" class="bg-gradient-to-r from-indigo-600 to-violet-600 h-full transition-all duration-1000" style="width: 0%"></div>
+                            </div>
+
+                            <p class="text-[10px] font-semibold text-indigo-800/80 uppercase tracking-widest" id="results-status-badge">Requires Improvement</p>
+                        </div>
+
+                        <!-- Teacher Persona Intro Message -->
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-indigo-600 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                    🎓
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-sm">Written Grade Report</h4>
+                                    <p class="text-[10px] text-indigo-600 font-medium tracking-wide uppercase">AI Structured Evaluation</p>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-2xl border-l-4 border-indigo-500 text-xs text-slate-700 leading-relaxed max-h-[40vh] overflow-y-auto" id="teacher-overall-comment">
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <i class="fa-solid fa-circle-notch fa-spin text-indigo-600"></i>
+                                    <span>Waiting for test completion...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats breakdown lists -->
+                    <div class="mt-8 pt-6 border-t border-slate-100 grid grid-cols-2 gap-3 text-center">
+                        <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
+                            <div class="text-emerald-700 font-bold text-lg" id="stat-correct-count">0</div>
+                            <div class="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">Correct</div>
+                        </div>
+                        <div class="bg-rose-50/50 p-3 rounded-xl border border-rose-100">
+                            <div class="text-rose-700 font-bold text-lg" id="stat-wrong-count">0</div>
+                            <div class="text-[10px] text-rose-600 font-semibold uppercase tracking-wider">Wrong</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Flashcards Explanations & Reviews -->
+                <div class="flex-1 bg-slate-50/60 p-6 sm:p-8 overflow-y-auto">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-slate-400"></i> Step-by-Step Question Breakdown
+                    </h4>
+
+                    <div id="results-detailed-cards-list" class="space-y-4">
+                        <!-- Dynamic generated marked cards go here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Exit/Abort Confirm Modal -->
+    <div id="modal-confirm-abort" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
+            <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl mx-auto mb-4">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 text-center mb-2">Exit Quiz?</h3>
+            <p class="text-xs text-slate-500 text-center leading-relaxed mb-6">
+                Are you sure you want to quit? All current answers will be discarded and you will have to start over.
+            </p>
+            <div class="grid grid-cols-2 gap-3">
+                <button id="btn-abort-cancel" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors">
+                    Continue Quiz
+                </button>
+                <button id="btn-abort-confirm" class="py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-sm">
+                    Yes, Exit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error/Notice Modal -->
+    <div id="modal-error" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-rose-50 animate-bounce-short">
+            <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center text-xl mx-auto mb-4">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 text-center mb-2" id="error-title">Extraction Error</h3>
+            <p class="text-xs text-slate-500 text-center leading-relaxed mb-6" id="error-message">
+                We weren't able to generate flashcards from this PDF. Please verify its content size or try again.
+            </p>
+            <button id="btn-close-error" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-colors shadow-sm">
+                Got it
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // Set PDFJS global worker paths
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        // State variables
+        let extractedPdfText = "";
+        let parsedPdfFileName = "";
+        let quizQuestions = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = []; // items format: { questionId: number, selectedAnswer: string, isCorrect: boolean }
+        let selectedOption = null;
+        let selectedDifficulty = "mixed";
+
+        // Custom Key override
+        const defaultApiKey = ""; // Used by runtime container if key auto-injected
+        
+        // UI Screens DOM Elements
+        const screenWelcome = document.getElementById('screen-welcome');
+        const screenLoading = document.getElementById('screen-loading');
+        const screenQuiz = document.getElementById('screen-quiz');
+        const screenResults = document.getElementById('screen-results');
+
+        // Sidebar Controls
+        const fileInput = document.getElementById('pdf-file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const uploadIdleState = document.getElementById('upload-idle-state');
+        const uploadLoadingState = document.getElementById('upload-loading-state');
+        const uploadSuccessState = document.getElementById('upload-success-state');
+        const uploadedFileNameText = document.getElementById('uploaded-file-name');
+        const uploadedFileDetails = document.getElementById('uploaded-file-details');
+        const btnChangeFile = document.getElementById('btn-change-file');
+        const btnGenerateQuiz = document.getElementById('btn-generate-quiz');
+        const pdfProgressText = document.getElementById('pdf-progress-text');
+        
+        // Ratio Sliders DOM Elements
+        const ratioSlider = document.getElementById('ratio-slider');
+        const ratioDisplay = document.getElementById('ratio-display');
+        
+        // Advanced Accordion
+        const toggleAdvanced = document.getElementById('toggle-advanced');
+        const advancedPanel = document.getElementById('advanced-panel');
+        const advancedChevron = document.getElementById('advanced-chevron');
+        const customApiKeyInput = document.getElementById('custom-api-key');
+
+        // Quiz Screen Elements
+        const quizProgressLabel = document.getElementById('quiz-progress-label');
+        const quizProgressPercentage = document.getElementById('quiz-progress-percentage');
+        const quizProgressBar = document.getElementById('quiz-progress-bar');
+        const quizBadgeDifficulty = document.getElementById('quiz-badge-difficulty');
+        const cardTypeBadge = document.getElementById('card-type-badge');
+        const cardQuestionText = document.getElementById('card-question-text');
+        const cardOptionsContainer = document.getElementById('card-options-container');
+        const btnSubmitAnswer = document.getElementById('btn-submit-answer');
+        const btnAbortQuiz = document.getElementById('btn-abort-quiz');
+
+        // Abort Modal Elements
+        const modalConfirmAbort = document.getElementById('modal-confirm-abort');
+        const btnAbortCancel = document.getElementById('btn-abort-cancel');
+        const btnAbortConfirm = document.getElementById('btn-abort-confirm');
+
+        // Results Screen Elements
+        const resultsScoreBig = document.getElementById('results-score-big');
+        const resultsScoreBar = document.getElementById('results-score-bar');
+        const resultsStatusBadge = document.getElementById('results-status-badge');
+        const statCorrectCount = document.getElementById('stat-correct-count');
+        const statWrongCount = document.getElementById('stat-wrong-count');
+        const teacherOverallComment = document.getElementById('teacher-overall-comment');
+        const resultsDetailedCardsList = document.getElementById('results-detailed-cards-list');
+        const btnRestartQuiz = document.getElementById('btn-restart-quiz');
+
+        // Error Modal Elements
+        const modalError = document.getElementById('modal-error');
+        const errorTitle = document.getElementById('error-title');
+        const errorMessage = document.getElementById('error-message');
+        const btnCloseError = document.getElementById('btn-close-error');
+
+        // --- CORE EVENT LISTENERS ---
+
+        // Advanced Panel toggle
+        toggleAdvanced.addEventListener('click', () => {
+            advancedPanel.classList.toggle('hidden');
+            advancedChevron.classList.toggle('rotate-180');
+        });
+
+        // Setup difficulty selectors
+        const difficultyButtons = {
+            mixed: document.getElementById('diff-mixed'),
+            easy: document.getElementById('diff-easy'),
+            medium: document.getElementById('diff-medium'),
+            hard: document.getElementById('diff-hard')
+        };
+        const difficultyDisplay = document.getElementById('difficulty-display');
+
+        Object.keys(difficultyButtons).forEach(level => {
+            difficultyButtons[level].addEventListener('click', () => {
+                // Update state
+                selectedDifficulty = level;
+                difficultyDisplay.textContent = level;
+
+                // Update active styles
+                Object.keys(difficultyButtons).forEach(key => {
+                    const btn = difficultyButtons[key];
+                    if (key === level) {
+                        btn.className = "py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition-all focus:outline-none";
+                    } else {
+                        btn.className = "py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition-all focus:outline-none";
+                    }
+                });
+            });
+        });
+
+        ratioSlider.addEventListener('input', () => {
+            const mcqPercent = parseInt(ratioSlider.value);
+            const binaryPercent = 100 - mcqPercent;
+            ratioDisplay.textContent = `${mcqPercent}% MCQ / ${binaryPercent}% T/F`;
+        });
+
+        // Setup PDF file picker and drag/drop
+        fileInput.addEventListener('change', handleFileSelect);
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-indigo-400', 'bg-indigo-50/10');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-indigo-400', 'bg-indigo-50/10');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-400', 'bg-indigo-50/10');
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+
+        btnChangeFile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetPDFState();
+        });
+
+        // Trigger quiz generation
+        btnGenerateQuiz.addEventListener('click', generateAIQuiz);
+
+        // Submit Quiz Answer
+        btnSubmitAnswer.addEventListener('click', handleSubmitAnswer);
+
+        // Abort / Quit Quiz (Custom modal replacement for confirm())
+        btnAbortQuiz.addEventListener('click', () => {
+            modalConfirmAbort.classList.remove('hidden');
+        });
+        btnAbortCancel.addEventListener('click', () => {
+            modalConfirmAbort.classList.add('hidden');
+        });
+        btnAbortConfirm.addEventListener('click', () => {
+            modalConfirmAbort.classList.add('hidden');
+            showScreen('welcome');
+        });
+
+        // Restart Quiz
+        btnRestartQuiz.addEventListener('click', () => {
+            if (quizQuestions && quizQuestions.length > 0) {
+                startQuiz();
+            } else {
+                showScreen('welcome');
+            }
+        });
+
+        btnCloseError.addEventListener('click', () => {
+            modalError.classList.add('hidden');
+        });
+
+        // --- FILE EXTRACTION ---
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/pdf') {
+                showError('Invalid File Type', 'Please upload a valid PDF document.');
+                resetPDFState();
+                return;
+            }
+
+            parsedPdfFileName = file.name;
+            extractPDFText(file);
+        }
+
+        function resetPDFState() {
+            fileInput.value = '';
+            extractedPdfText = '';
+            parsedPdfFileName = '';
+            
+            uploadIdleState.classList.remove('hidden');
+            uploadLoadingState.classList.add('hidden');
+            uploadSuccessState.classList.add('hidden');
+            
+            btnGenerateQuiz.disabled = true;
+            btnGenerateQuiz.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'text-white');
+            btnGenerateQuiz.classList.add('bg-slate-100', 'text-slate-400');
+        }
+
+        async function extractPDFText(file) {
+            uploadIdleState.classList.add('hidden');
+            uploadLoadingState.classList.remove('hidden');
+            uploadSuccessState.classList.add('hidden');
+            pdfProgressText.textContent = "Loading file...";
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdf = await loadingTask.promise;
+                const numPages = pdf.numPages;
+                let fullText = "";
+
+                for (let i = 1; i <= numPages; i++) {
+                    pdfProgressText.textContent = `Reading page ${i} of ${numPages}...`;
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + "\n";
+                    
+                    // Cap extraction if file is massive to avoid payload bloat
+                    if (fullText.length > 60000) {
+                        fullText = fullText.substring(0, 60000) + "... [Truncated for speed]";
+                        break;
+                    }
+                }
+
+                if (!fullText.trim()) {
+                    throw new Error("No readable text found in this PDF.");
+                }
+
+                extractedPdfText = fullText;
+
+                // Update UI to success state
+                uploadLoadingState.classList.add('hidden');
+                uploadSuccessState.classList.remove('hidden');
+                uploadedFileNameText.textContent = file.name;
+                uploadedFileDetails.textContent = `${numPages} pages parsed successfully`;
+
+                // Enable Quiz Generation
+                btnGenerateQuiz.removeAttribute('disabled');
+                btnGenerateQuiz.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+                btnGenerateQuiz.classList.add('bg-indigo-600', 'hover:bg-indigo-700', 'text-white');
+
+            } catch (err) {
+                console.error(err);
+                showError('PDF Parsing Failed', err.message || 'We could not extract readable content from this PDF.');
+                resetPDFState();
+            }
+        }
+
+        // --- GEMINI API CALL WITH RETRY & LOGIC ---
+
+        function getApiKey() {
+            const customKey = customApiKeyInput.value.trim();
+            if (customKey) return customKey;
+            return defaultApiKey;
+        }
+
+        async function generateAIQuiz() {
+            if (!extractedPdfText) return;
+
+            showScreen('loading');
+
+            const mcqPercent = parseInt(ratioSlider.value);
+            const numMCQ = Math.round(mcqPercent / 10);
+            const numBinary = 10 - numMCQ;
+            
+            const difficultyInstruction = selectedDifficulty === 'mixed'
+                ? 'Vary the difficulty levels from "easy", "medium" to "hard". Include a mix of all three.'
+                : `You MUST strictly generate all 10 questions at the "${selectedDifficulty}" difficulty level. Ensure every question has its "difficulty" field set exactly to "${selectedDifficulty}".`;
+
+            const prompt = `
+            You are a highly analytical and structured university educator. Analyze the learning materials below and create a structured quiz of exactly 10 questions.
+            
+            Follow these rules carefully:
+            1. Generate EXACTLY 10 unique, randomly-selected questions covering various topics of the text. Do not make duplicate questions.
+            2. ${difficultyInstruction}
+            3. Respect the user's chosen quiz format balance ratio:
+               - You MUST output exactly ${numMCQ} "multiple-choice" questions (with 4 realistic-looking choices option A, B, C, D).
+               - You MUST output exactly ${numBinary} "binary" (True/False) questions (where options are exactly ["True", "False"]).
+            4. Make sure the correct answers correspond to one of the provided options.
+            5. Provide a brief, human-like explanation for why the correct answer is right in just a couple of sentences.
+            6. CRITICAL MATH HANDLING: If the content contains math formulas, equations, or scientific symbols, you MUST strictly format them using standard LaTeX notation so they can be rendered correctly. Enclose inline math in single dollar signs (e.g., $E=mc^2$) and block math in double dollar signs (e.g., $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$). Do not use Markdown asterisks inside your LaTeX blocks.
+
+            LEARNING MATERIALS EXTRACTED FROM PDF:
+            """
+            ${extractedPdfText}
+            """
+            `;
+
+            const responseSchema = {
+                type: "OBJECT",
+                properties: {
+                    questions: {
+                        type: "ARRAY",
+                        description: "An array containing exactly 10 diverse quiz questions.",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                id: { type: "INTEGER" },
+                                question: { type: "STRING" },
+                                type: { 
+                                    type: "STRING", 
+                                    enum: ["multiple-choice", "binary"] 
+                                },
+                                options: { 
+                                    type: "ARRAY", 
+                                    items: { type: "STRING" },
+                                    description: "Options array. For binary format, it must be exactly ['True', 'False']."
+                                },
+                                correctAnswer: { 
+                                    type: "STRING",
+                                    description: "The correct option. Must match exactly one of the items inside 'options'." 
+                                },
+                                difficulty: { 
+                                    type: "STRING", 
+                                    enum: ["easy", "medium", "hard"] 
+                                },
+                                explanation: { 
+                                    type: "STRING", 
+                                    description: "A highly thorough, step-by-step human-teacher explanation citing specific facts directly from the source text and showing exact remediation steps to reach the correct answer." 
+                                }
+                            },
+                            required: ["id", "question", "type", "options", "correctAnswer", "difficulty", "explanation"]
+                        }
+                    }
+                },
+                required: ["questions"]
+            };
+
+            const apiKey = getApiKey();
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: responseSchema
+                }
+            };
+
+            try {
+                const responseData = await callGeminiWithRetry(endpoint, payload);
+                
+                if (!responseData.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    throw new Error("No quiz structure received from the AI.");
+                }
+
+                const jsonRawText = responseData.candidates[0].content.parts[0].text;
+                const parsedResult = JSON.parse(jsonRawText);
+
+                if (!parsedResult.questions || parsedResult.questions.length < 1) {
+                    throw new Error("The AI failed to create structured quiz questions. Please try again.");
+                }
+
+                quizQuestions = parsedResult.questions;
+                startQuiz();
+
+            } catch (error) {
+                console.error("Gemini Generation Error:", error);
+                showError("Generation Error", `Could not generate your quiz right now. ${error.message || "Please make sure your API Key is valid or retry in a few seconds."}`);
+                showScreen('welcome');
+            }
+        }
+
+        async function callGeminiWithRetry(endpoint, payload, maxRetries = 5) {
+            let delay = 1000;
+
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        return await response.json();
+                    } else {
+                        const errBody = await response.json().catch(() => ({}));
+                        console.warn(`Attempt ${attempt} failed with status: ${response.status}`, errBody);
+                        
+                        if (response.status === 400 || response.status === 403 || response.status === 404) {
+                            throw new Error(errBody.error?.message || `HTTP error ${response.status}`);
+                        }
+                    }
+                } catch (err) {
+                    if (attempt === maxRetries || err.message.includes("API key")) {
+                        throw err;
+                    }
+                }
+
+                await new Promise(res => setTimeout(res, delay));
+                delay *= 2;
+            }
+            throw new Error("Maximum retry attempts reached without response.");
+        }
+
+        // --- QUIZ GAMEPLAY CONTROL ---
+
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            userAnswers = [];
+            selectedOption = null;
+
+            showScreen('quiz');
+            loadQuestion(currentQuestionIndex);
+        }
+
+        function loadQuestion(index) {
+            selectedOption = null;
+
+            // Reset submit button to inactive
+            btnSubmitAnswer.disabled = true;
+            btnSubmitAnswer.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'text-white');
+            btnSubmitAnswer.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+
+            const questionData = quizQuestions[index];
+
+            // Progress labels
+            quizProgressLabel.textContent = `Flashcard ${index + 1} of 10`;
+            const percent = ((index + 1) / 10) * 100;
+            quizProgressPercentage.textContent = `${percent}%`;
+            quizProgressBar.style.width = `${percent}%`;
+
+            // Difficulty setup
+            quizBadgeDifficulty.textContent = questionData.difficulty;
+            quizBadgeDifficulty.className = "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider";
+            if (questionData.difficulty === 'easy') {
+                quizBadgeDifficulty.classList.add('bg-emerald-50', 'text-emerald-700', 'border', 'border-emerald-100');
+            } else if (questionData.difficulty === 'medium') {
+                quizBadgeDifficulty.classList.add('bg-amber-50', 'text-amber-700', 'border', 'border-amber-100');
+            } else {
+                quizBadgeDifficulty.classList.add('bg-rose-50', 'text-rose-700', 'border', 'border-rose-100');
+            }
+
+            // Card type setup
+            cardTypeBadge.textContent = questionData.type === 'binary' ? 'True / False' : 'Multiple Choice';
+
+            // Question title
+            cardQuestionText.textContent = questionData.question;
+
+            // Load options
+            cardOptionsContainer.innerHTML = '';
+            questionData.options.forEach((optionText, idx) => {
+                const labelLetter = questionData.type === 'binary' ? '' : `${String.fromCharCode(65 + idx)}. `;
+                
+                const optionBtn = document.createElement('button');
+                optionBtn.type = 'button';
+                optionBtn.className = "w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/10 transition-all duration-150 flex items-center justify-between group";
+                optionBtn.innerHTML = `
+                    <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900 leading-relaxed flex items-start gap-1">
+                        <span class="font-bold text-slate-400 group-hover:text-indigo-600 shrink-0">${labelLetter}</span>
+                        <span class="option-text-val w-full overflow-hidden">${optionText}</span>
+                    </span>
+                    <span class="indicator-circle w-5 h-5 rounded-full border border-slate-200 bg-white flex items-center justify-center shrink-0 ml-4 group-hover:border-indigo-400 transition-colors">
+                        <span class="bullet w-2.5 h-2.5 rounded-full bg-indigo-600 scale-0 transition-transform duration-150"></span>
+                    </span>
+                `;
+
+                optionBtn.addEventListener('click', () => {
+                    selectOption(optionBtn, optionText);
+                });
+
+                cardOptionsContainer.appendChild(optionBtn);
+            });
+
+            // Typeset MathJax for the newly loaded question and options
+            if (window.MathJax) {
+                MathJax.typesetPromise([cardQuestionText, cardOptionsContainer]).catch((err) => console.log('MathJax error: ', err));
+            }
+        }
+
+        function selectOption(buttonElement, optionText) {
+            const allOptionBtns = cardOptionsContainer.querySelectorAll('button');
+            allOptionBtns.forEach(btn => {
+                btn.classList.remove('border-indigo-600', 'bg-indigo-50/20');
+                btn.classList.add('border-slate-200');
+                const bullet = btn.querySelector('.bullet');
+                if (bullet) {
+                    bullet.classList.remove('scale-100');
+                    bullet.classList.add('scale-0');
+                }
+            });
+
+            buttonElement.classList.remove('border-slate-200');
+            buttonElement.classList.add('border-indigo-600', 'bg-indigo-50/20');
+            const targetBullet = buttonElement.querySelector('.bullet');
+            if (targetBullet) {
+                targetBullet.classList.remove('scale-0');
+                targetBullet.classList.add('scale-100');
+            }
+
+            selectedOption = optionText;
+
+            // Enable submit
+            btnSubmitAnswer.removeAttribute('disabled');
+            btnSubmitAnswer.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+            btnSubmitAnswer.classList.add('bg-indigo-600', 'hover:bg-indigo-700', 'text-white');
+        }
+
+        function handleSubmitAnswer() {
+            if (!selectedOption) return;
+
+            const currentQuestion = quizQuestions[currentQuestionIndex];
+            const isCorrect = selectedOption.trim().toLowerCase() === currentQuestion.correctAnswer.trim().toLowerCase();
+
+            // Save record (no immediate feedback given, following sequential quiz constraint)
+            userAnswers.push({
+                questionId: currentQuestion.id,
+                selectedAnswer: selectedOption,
+                isCorrect: isCorrect
+            });
+
+            // Advance immediately to the next question
+            currentQuestionIndex++;
+            if (currentQuestionIndex < 10) {
+                loadQuestion(currentQuestionIndex);
+            } else {
+                finishQuiz();
+            }
+        }
+
+        // --- RESULTS DIAGNOSTIC SUMMARY ---
+
+        function finishQuiz() {
+            showScreen('results');
+
+            // Grade calculations
+            const correctCount = userAnswers.filter(ans => ans.isCorrect).length;
+            const wrongCount = 10 - correctCount;
+            const scorePercent = (correctCount / 10) * 100;
+
+            resultsScoreBig.textContent = correctCount;
+            resultsScoreBar.style.width = `${scorePercent}%`;
+            
+            // Set status label and colors
+            let statusText = "Requires Practice";
+            let badgeClass = "bg-rose-50 text-rose-700 border-rose-100";
+            
+            if (correctCount >= 9) {
+                statusText = "Excellent Mastery!";
+                badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-100";
+            } else if (correctCount >= 7) {
+                statusText = "Great Performance!";
+                badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-100";
+            } else if (correctCount >= 5) {
+                statusText = "Satisfactory Progress";
+                badgeClass = "bg-amber-50 text-amber-700 border-amber-100";
+            } else {
+                statusText = "Needs Revision";
+                badgeClass = "bg-rose-50 text-rose-700 border-rose-100";
+            }
+
+            resultsStatusBadge.textContent = statusText;
+            resultsStatusBadge.className = `text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full border ${badgeClass} inline-block mt-2`;
+
+            statCorrectCount.textContent = correctCount;
+            statWrongCount.textContent = wrongCount;
+
+            // Generate the dynamic structured overall written grade report
+            generateOverallWrittenReport(userAnswers, quizQuestions);
+
+            // Generate diagnostic card review HTML
+            resultsDetailedCardsList.innerHTML = '';
+            quizQuestions.forEach((q, idx) => {
+                const uAns = userAnswers[idx];
+                const isCorrect = uAns.isCorrect;
+
+                const detailCard = document.createElement('div');
+                detailCard.className = `p-6 bg-white rounded-2xl border transition-all duration-150 ${isCorrect ? 'border-emerald-100 hover:border-emerald-300' : 'border-rose-100 hover:border-rose-300'} shadow-sm space-y-4`;
+                
+                // Add warning/remediation layout if answered incorrectly
+                const statusBadgeHTML = isCorrect 
+                    ? `<span class="px-2.5 py-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Mastered Concept</span>`
+                    : `<span class="px-2.5 py-1 text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-md uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> Written Remediation Guide</span>`;
+
+                const explanationSectionHTML = isCorrect
+                    ? `<!-- Correct Answer Explanation -->
+                       <div class="bg-emerald-50/30 rounded-2xl p-5 border border-emerald-100/40 space-y-2 relative overflow-hidden">
+                           <div class="absolute top-0 right-0 w-12 h-12 bg-emerald-100/20 rounded-bl-3xl flex items-center justify-center">
+                               <i class="fa-solid fa-file-invoice text-emerald-500 text-xs"></i>
+                           </div>
+                           <span class="text-[9px] font-bold text-emerald-700 uppercase tracking-widest block flex items-center gap-1">
+                                🎓 Written Reinforcement Note:
+                           </span>
+                           <p class="text-xs text-slate-700 leading-relaxed font-normal">${q.explanation}</p>
+                       </div>`
+                    : `<!-- Incorrect Answer Remediation Explanation (Thorough step-by-step) -->
+                       <div class="bg-amber-50/50 rounded-2xl p-5 border border-amber-200/60 space-y-3 relative overflow-hidden">
+                           <div class="absolute top-0 right-0 w-12 h-12 bg-amber-100/30 rounded-bl-3xl flex items-center justify-center">
+                               <i class="fa-solid fa-book text-amber-600 text-xs"></i>
+                           </div>
+                           <span class="text-[9px] font-bold text-amber-800 uppercase tracking-widest block flex items-center gap-1">
+                                🎓 Written Step-by-Step Pathway:
+                           </span>
+                           <div class="space-y-2">
+                               <div class="text-[10px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
+                                   <i class="fa-solid fa-map-signs"></i> Detailed Solution Steps & Fact Corrections:
+                               </div>
+                               <p class="text-xs text-slate-700 leading-relaxed font-normal">${q.explanation}</p>
+                           </div>
+                           <div class="text-[9px] text-amber-700 font-bold bg-amber-100/40 px-2 py-1 rounded-lg inline-block">
+                               <i class="fa-solid fa-circle-info"></i> Note: This correction references the factual statements extracted directly from your PDF source.
+                           </div>
+                       </div>`;
+
+                detailCard.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="space-y-1 w-full overflow-hidden">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Question ${idx + 1} • ${q.difficulty}</span>
+                                ${statusBadgeHTML}
+                            </div>
+                            <h5 class="text-sm font-bold text-slate-800 leading-snug pt-1">${q.question}</h5>
+                        </div>
+                        <span class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${isCorrect ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}">
+                            <i class="${isCorrect ? 'fa-solid fa-check' : 'fa-solid fa-xmark'} text-xs"></i>
+                        </span>
+                    </div>
+
+                    <!-- Answers comparison -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                        <div class="p-3 rounded-xl overflow-hidden ${isCorrect ? 'bg-emerald-50/30 border border-emerald-100/40 text-emerald-800' : 'bg-rose-50/30 border border-rose-100/40 text-rose-800'}">
+                            <span class="font-bold uppercase tracking-wider text-[9px] block text-slate-400 mb-0.5">Your Selected Answer</span>
+                            <span class="font-semibold block break-words">${uAns.selectedAnswer}</span>
+                        </div>
+                        <div class="p-3 rounded-xl overflow-hidden bg-emerald-50 border border-emerald-100 text-emerald-950">
+                            <span class="font-bold uppercase tracking-wider text-[9px] block text-emerald-600 mb-0.5">Corrected Answer</span>
+                            <span class="font-semibold block break-words">${q.correctAnswer}</span>
+                        </div>
+                    </div>
+
+                    ${explanationSectionHTML}
+                `;
+
+                resultsDetailedCardsList.appendChild(detailCard);
+            });
+
+            // Typeset MathJax for the results list
+            if (window.MathJax) {
+                MathJax.typesetPromise([resultsDetailedCardsList]).catch((err) => console.log('MathJax error: ', err));
+            }
+        }
+
+        // --- NAVIGATION HELPERS ---
+
+        function showScreen(screenId) {
+            screenWelcome.classList.add('hidden');
+            screenLoading.classList.add('hidden');
+            screenQuiz.classList.add('hidden');
+            screenResults.classList.add('hidden');
+
+            if (screenId === 'welcome') {
+                screenWelcome.classList.remove('hidden');
+            } else if (screenId === 'loading') {
+                screenLoading.classList.remove('hidden');
+            } else if (screenId === 'quiz') {
+                screenQuiz.classList.remove('hidden');
+            } else if (screenId === 'results') {
+                screenResults.classList.remove('hidden');
+            }
+        }
+
+        async function generateOverallWrittenReport(userAnswers, quizQuestions) {
+            const commentContainer = document.getElementById('teacher-overall-comment');
+            commentContainer.innerHTML = `<div class="flex items-center gap-2 text-slate-500"><i class="fa-solid fa-circle-notch fa-spin text-indigo-600"></i><span>Writing personalized grade report...</span></div>`;
+
+            const score = userAnswers.filter(ans => ans.isCorrect).length;
+    
+            let performanceSummary = `The student scored ${score}/10 on the quiz.\n\n`;
+            quizQuestions.forEach((q, idx) => {
+                const uAns = userAnswers[idx];
+                performanceSummary += `Question ${idx + 1} (${q.difficulty} - ${q.type}): "${q.question}"\n`;
+                performanceSummary += `  - CORRECT ANSWER: "${q.correctAnswer}"\n`;
+                performanceSummary += `  - STUDENT ANSWER: "${uAns.selectedAnswer}"\n`;
+                performanceSummary += `  - STATUS: ${uAns.isCorrect ? 'CORRECT' : 'INCORRECT'}\n`;
+                performanceSummary += `  - EDUCATIONAL EXPLANATION: "${q.explanation}"\n\n`;
+            });
+
+            const systemPrompt = `You are a friendly, helpful tutor. Write a comprehensive Grade Report. 
+            FOR EVERY SINGLE QUESTION LISTED, you must explicitly state the correct answer and provide a clear, educational explanation, 
+            regardless of whether the student answered correctly or incorrectly. 
+            Keep the tone encouraging, conversational, and avoid academic jargon. 
+            Provide a brief overall summary and specific tips for mastery based on these results.
+            If mentioning any mathematical or scientific notation from the questions, maintain proper LaTeX formatting using $ for inline and $$ for block math.`;
+            
+            const userQuery = `Please analyze the following quiz performance and draft a Written Grade Report:\n\n${performanceSummary}`;
+            
+            const apiKey = getApiKey();
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            try {
+                const responseData = await callGeminiWithRetry(endpoint, payload);
+                if (responseData.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const reportText = responseData.candidates[0].content.parts[0].text;
+                    commentContainer.innerHTML = formatReportHTML(reportText);
+
+                    // Typeset MathJax for the dynamically generated report text
+                    if (window.MathJax) {
+                        MathJax.typesetPromise([commentContainer]).catch((err) => console.log('MathJax error: ', err));
+                    }
+                } else {
+                    throw new Error("Invalid response content received.");
+                }
+            } catch (err) {
+                console.error("Grade report writing failed:", err);
+                commentContainer.innerHTML = `<span class="text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Failed to write the grade report. Please check your API configuration.</span>`;
+            }
+        }
+
+        function formatReportHTML(text) {
+            // Helper to clean and format markdown characters into structural HTML
+            let html = text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                // Note: We leave single asterisks `*` un-parsed here to avoid messing up possible valid math expressions
+                .replace(/^### (.*$)/gim, '<h5 class="font-bold text-slate-800 text-xs mt-3 mb-1 uppercase tracking-wide">$1</h5>')
+                .replace(/^## (.*$)/gim, '<h4 class="font-bold text-indigo-950 text-sm mt-4 mb-2">$1</h4>')
+                .replace(/^# (.*$)/gim, '<h3 class="font-extrabold text-slate-900 text-base mt-4 mb-2 border-b border-slate-100 pb-1">$1</h3>')
+                .replace(/\n/g, '<br>');
+            return `<div class="space-y-2 text-slate-700 leading-relaxed text-xs">${html}</div>`;
+        }
+
+        function showError(title, message) {
+            errorTitle.textContent = title;
+            errorMessage.textContent = message;
+            modalError.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
