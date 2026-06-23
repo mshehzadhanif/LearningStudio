@@ -827,7 +827,7 @@
                 required: ["questions"]
             };
 
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${keyToUse}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${keyToUse}`;
 
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
