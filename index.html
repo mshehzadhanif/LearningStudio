@@ -208,7 +208,7 @@
         <!-- Sidebar Footer -->
         <div class="p-6 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-400 text-center flex items-center justify-between">
             <span>Learning Studio v1.5 (Math-Ready)</span>
-            <span>Powered by Gemini 3.5 Flash</span>
+            <span>Powered by Gemini 2.5 Flash</span>
         </div>
     </aside>
 
@@ -1171,7 +1171,7 @@
             const userQuery = `Please analyze the following quiz performance and draft a Written Grade Report:\n\n${performanceSummary}`;
             
             const keyToUse = getEffectiveApiKey();
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${keyToUse}`;
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${keyToUse}`;
 
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
