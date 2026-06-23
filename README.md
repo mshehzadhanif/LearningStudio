@@ -1,3 +1,3 @@
-# LearningStudio
+# Learning Studio
 The Learning Studio is a study assistant created by Gemini and designed to transform static educational documents into interactive, personalized learning experiences. By allowing users to upload PDFs directly, the app leverages advanced AI to extract key concepts and automatically generate a ten-question quiz that adapts to the user's chosen difficulty ranging from "easy" to "hard", and format balance between multiple-choice and true/false questions. Beyond simple grading, the platform provides a comprehensive diagnostic report upon completion, delivering human-like, step-by-step tutoring feedback that clarifies concepts and explains correct answers, effectively turning every study session into a guided, one-on-one lesson.
 
