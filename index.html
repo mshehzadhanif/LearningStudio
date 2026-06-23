@@ -757,7 +757,7 @@
             1. Generate EXACTLY 10 unique, randomly-selected questions covering various topics of the text. Do not make duplicate questions.
             2. ${difficultyInstruction}
             3. Respect the user's chosen quiz format balance ratio:
-               - You MUST output exactly ${numMCQ} "multiple-choice" questions (with 4 realistic-looking choices option A, B, C, D).
+               - You MUST output exactly ${numMCQ} "multiple-choice" questions (with 4 realistic-looking choices option A, B, C, D) but do not include A, B, C, D in the answer.
                - You MUST output exactly ${numBinary} "binary" (True/False) questions (where options are exactly ["True", "False"]).
             4. Make sure the correct answers correspond to one of the provided options.
             5. Provide a brief, human-like explanation for why the correct answer is right in just a couple of sentences.
